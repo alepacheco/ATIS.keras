@@ -10,10 +10,14 @@ from keras.layers.recurrent import SimpleRNN, GRU, LSTM
 from keras.layers.core import Dense, Dropout
 from keras.layers.wrappers import TimeDistributed
 from keras.layers import Convolution1D, MaxPooling1D
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import progressbar
 
-
+# https://deeplearning4j.org/word2vec.html
+# https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
+# http://ahogrammer.com/2017/01/20/the-list-of-pretrained-word-embeddings/
 
 ### Load Data
 train_set, valid_set, dicts = data.load.atisfull()
