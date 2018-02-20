@@ -15,6 +15,15 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import progressbar
 
+# import gensim
+# word2vector = gensim.models.KeyedVectors.load_word2vec_format('./GoogleNews-vectors-negative300.bin', binary=True)
+#
+# def w2v(w):
+#     if w in word2vector:
+#         return word2vector[w]
+#     else:
+#         return '<UNK>'
+
 # https://deeplearning4j.org/word2vec.html
 # https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
 # http://ahogrammer.com/2017/01/20/the-list-of-pretrained-word-embeddings/
@@ -22,6 +31,18 @@ import progressbar
 ### Load Data
 train_set, valid_set, dicts = data.load.atisfull()
 w2idx, ne2idx, labels2idx = dicts['words2idx'], dicts['tables2idx'], dicts['labels2idx']
+
+train_x, train_ne, train_label = train_set
+
+words_train = [ list(map(lambda x: idx2w[x], w)) for w in train_x]
+x_train = [ list(map(lambda x: w2v(x), w)) for w in words_train]
+groundtruth_train = [ list(map(lambda x: idx2la[x], y)) for y in train_label]
+
+
+val_x, val_ne, val_label = valid_set
+
+words_val = [ list(map(lambda x: idx2w[x], w)) for w in val_x]
+groundtruth_val = [ list(map(lambda x: idx2la[x], y)) for y in val_label]
 
 # Create index to word/label dicts
 idx2w  = {w2idx[k]:k for k in w2idx}
@@ -36,20 +57,11 @@ n_vocab = len(idx2w)
 # Define model
 model = Sequential()
 model.add(Embedding(n_vocab,100))
-model.add(Convolution1D(64,5,border_mode='same', activation='relu'))
+model.add(Convolution1D(64,5,padding='same', activation='relu'))
 model.add(Dropout(0.25))
 model.add(GRU(100,return_sequences=True))
 model.add(TimeDistributed(Dense(n_classes, activation='softmax')))
 model.compile('rmsprop', 'categorical_crossentropy')
-
-### Ground truths etc for conlleval
-train_x, train_ne, train_label = train_set
-val_x, val_ne, val_label = valid_set
-
-words_val = [ list(map(lambda x: idx2w[x], w)) for w in val_x]
-groundtruth_val = [ list(map(lambda x: idx2la[x], y)) for y in val_label]
-words_train = [ list(map(lambda x: idx2w[x], w)) for w in train_x]
-groundtruth_train = [ list(map(lambda x: idx2la[x], y)) for y in train_label]
 
 
 ### Training
@@ -58,7 +70,7 @@ n_epochs = 10
 train_f_scores = []
 val_f_scores = []
 best_val_f1 = 0
-
+i = 0
 for i in range(n_epochs):
     print("Epoch {}".format(i))
 
@@ -77,12 +89,13 @@ for i in range(n_epochs):
             avgLoss += loss
 
         pred = model.predict_on_batch(sent)
+        print(pred.shape)
         pred = np.argmax(pred,-1)[0]
         train_pred_label.append(pred)
-
     avgLoss = avgLoss/n_batch
 
     predword_train = [ list(map(lambda x: idx2la[x], y)) for y in train_pred_label]
+    #                    guess(labels)     testY(labels)   words input[]
     con_dict = conlleval(predword_train, groundtruth_train, words_train, 'r.txt')
     train_f_scores.append(con_dict['f1'])
     print('Loss = {}, Precision = {}, Recall = {}, F1 = {}'.format(avgLoss, con_dict['r'], con_dict['p'], con_dict['f1']))
